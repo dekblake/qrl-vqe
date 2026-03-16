@@ -22,7 +22,7 @@ def Rotation(qubit, symbols):
 def Entangling(qubits):
     #Circular entanglement topology (CZ gates)
 
-    circular_cz = [cirq.CZ(q0, q0) for q0, q1 in zip(qubits, qubits[1:])]
+    circular_cz = [cirq.CZ(q0, q1) for q0, q1 in zip(qubits, qubits[1:])]
     circular_cz += ([cirq.CZ(qubits[0], qubits[-1])] if len(qubits) != 2 else [])
 
     return circular_cz
@@ -34,7 +34,7 @@ def VQCircuit(qubits, n_layers):
 
     #symbols for variational angles
     params = sympy.symbols(f'theta(0:{3*(n_layers+1)*number_qubits})')
-    params = np.asarray(params).reshape ((n_layers +1 , number_qubits, 3))
+    params = np.asarray(params).reshape((n_layers + 1 , number_qubits, 3))
 
     #symbols for encoding angles: four features
     x_inputs = sympy.symbols(f'x(0:{n_layers})' + f'_(0:{number_qubits})')
@@ -62,6 +62,15 @@ def VQCircuit(qubits, n_layers):
         #last variational layer
         circuit += cirq.Circuit(Rotation(q, params[n_layers, i]) 
                                 for i, q in enumerate(qubits))
+        
+    return circuit, list(params.flat), list(x_inputs.flat), list(y_inputs.flat), list(z_inputs.flat)
+
+"""
+n_qubits, n_layers = 4, 1
+qubits = cirq.GridQubit.rect(1, n_qubits)
+circuit, _, _, _, _ = VQCircuit(qubits, n_layers)
+SVGCircuit(circuit)
+"""
 
 def ControlledParameterisedQCircuit(qubits, n_layers):
 
