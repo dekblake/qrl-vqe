@@ -1,14 +1,16 @@
-import tensorflow as tf 
+import tensorflow as tf
 import tensorflow_quantum as tfq
+
+import gymnasium as gym
 import cirq
-import numpy as np 
 import sympy
+import numpy as np
 from functools import reduce
 from collections import deque, defaultdict
 import matplotlib.pyplot as plt
 from cirq.contrib.svg import SVGCircuit
 
-#tf.get_logger().setLevel('ERROR')
+tf.get_logger().setLevel('ERROR')
 
 def Rotation(qubit, symbols):
     #gates that rotatate classical data points around bloch sphere
@@ -71,7 +73,3 @@ qubits = cirq.GridQubit.rect(1, n_qubits)
 circuit, _, _, _, _ = VQCircuit(qubits, n_layers)
 SVGCircuit(circuit)
 """
-
-def ControlledParameterisedQCircuit(qubits, n_layers):
-
-    return
