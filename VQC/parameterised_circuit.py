@@ -43,8 +43,10 @@ def VQCircuit(qubits, n_layers):
     x_inputs = np.asarray(x_inputs).reshape((n_layers, number_qubits, ))
     y_inputs = sympy.symbols(f'y(0:{n_layers})' + f'_(0:{number_qubits})')
     y_inputs = np.asarray(y_inputs).reshape((n_layers, number_qubits))
-    z_inputs = sympy.symbols(f'z(0:{n_layers})' + f'_(0:{number_qubits})')
-    z_inputs = np.asarray(z_inputs).reshape((n_layers, number_qubits))
+    z1_inputs = sympy.symbols(f'z(0:{n_layers})' + f'_A(0:{number_qubits})')
+    z1_inputs = np.asarray(z1_inputs).reshape((n_layers, number_qubits))
+    z2_inputs = sympy.symbols(f'z(0:{n_layers})' + f'_B(0:{number_qubits})')
+    z2_inputs = np.asarray(z2_inputs).reshape((n_layers, number_qubits))
 
     #literal circuit: bloch variational layer, encoding, free variational layer
     circuit = cirq.Circuit()
@@ -59,17 +61,74 @@ def VQCircuit(qubits, n_layers):
         #encoding layer
         circuit += cirq.Circuit(cirq.rx(x_inputs[l, i])(q) for i,q in enumerate(qubits))
         circuit += cirq.Circuit(cirq.ry(y_inputs[l, i])(q) for i,q in enumerate(qubits))
-        circuit += cirq.Circuit(cirq.ry(z_inputs[l, i])(q) for i,q in enumerate(qubits))
+        circuit += cirq.Circuit(cirq.rz(z1_inputs[l, int(i/2)])(q) for i,q in enumerate(qubits) if i % 2 == 0)
+        circuit += cirq.Circuit(cirq.rz(z2_inputs[l, int((i-1)/2)])(q) for i,q in enumerate(qubits) if i % 2 == 1)
 
         #last variational layer
         circuit += cirq.Circuit(Rotation(q, params[n_layers, i]) 
                                 for i, q in enumerate(qubits))
-        
-    return circuit, list(params.flat), list(x_inputs.flat), list(y_inputs.flat), list(z_inputs.flat)
+      #flatten inputs
+    args = (x_inputs, y_inputs, z1_inputs, z2_inputs)
+    inputs = np.concatenate(args).ravel().tolist()
+
+    return circuit, list(params.ravel().tolist()), list(inputs)
 
 """
 n_qubits, n_layers = 4, 1
 qubits = cirq.GridQubit.rect(1, n_qubits)
-circuit, _, _, _, _ = VQCircuit(qubits, n_layers)
+circuit, _, _, = VQCircuit(qubits, n_layers)
 SVGCircuit(circuit)
 """
+
+#nothing changed
+class VQCReuploading(tf.keras.layers.Layer):
+    #Applies variational angles and scaling parameters
+
+    def __init__(self, 
+                 qubits,
+                 n_layers,
+                 observables,
+                 activation='linear',
+                 name="re-uploading_PQC"):
+        super(VQCReuploading, self).__init__(name=name)
+        self.n_layers = n_layers
+        self.n_qubits = len(qubits)
+
+        circuit, theta_symbols, input_symbols = VQCircuit(qubits, n_layers)
+        
+        theta_init = tf.random_uniform_initialiser(minval=0.0, maxval=np.pi)
+        self.theta = tf.Variable(initial_value=self.theta_init(
+            shape=(1, len(theta_symbols)), dtyoe='float32'),
+                                        trainable=True,
+                                        name='thetas')
+        lmbd_init = tf.ones(shape=(self.n_qubits*self.n_layers,))
+        self.lmbd = tf.Variable(initial_value=lmbd_init,
+                                dtype='float32',
+                                trainable=True,
+                                name='lambdas')
+
+        # symbol order
+        symbols = [str(symb) for symb in theta_symbols + input_symbols]
+        self.indices = tf.constant([symbols.index(a) for a in sorted(symbols)])
+
+        self.activation = activation
+        self.empty_circuit = tfq.convert_to_tensor([cirq.Circuit()])
+        self.computation_layer = tfq.layers.ControlledPQC(circuit, observables)
+
+    def call(self, inputs): 
+        #inputs[0] = encoding data for the state
+
+        batch_dim = tf.gather(tf.shape(inputs[0]), 0)
+        tiled_up_circuits = tf.repeat(self.empty_circuit, repeats=batch_dim)
+        tiled_up_thetas = tf.tile(self.theta, multiples=[batch_dim,1])
+        tiled_up_inputs = tf.tile(inputs[0], multiples=[1, self.n_layers])
+        scaled_inputs = tf.einsum('i, ji->', self.lmbd, tiled_up_inputs)
+        squashed_inputs = tf.keras.layers.Activation(
+            self.activation)(scaled_inputs)
+        
+        joined_vars = tf.concat([tiled_up_thetas, squashed_inputs], axis=1)
+        joined_vars = tf.gather(joined_vars, self.indices, axis=1)
+
+        return self.computation_layer([tiled_up_circuits, joined_vars])
+    
+
