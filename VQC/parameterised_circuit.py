@@ -132,3 +132,47 @@ class VQCReuploading(tf.keras.layers.Layer):
         return self.computation_layer([tiled_up_circuits, joined_vars])
     
 
+#Softmax Policy Gradient
+class Nonalternating(tf.keras.layers.Layer): 
+
+    #defining observable weights
+    def __init__(self, output_dim): 
+        super(Nonalternating, self).__init__()
+        self.w = tf.Variable(initial_value=tf.constant,
+                             dtype='float32',
+                             trainable=True,
+                             name="obs-weights")
+    
+    def call(self, inputs):
+        return tf.matmul(inputs, self.w)
+
+
+n_qubits = 4  # Dimension of the state vectors in CartPole
+n_layers = 5  # Number of layers in the PQC
+n_bits = 20  # Number of actions in CartPole
+
+qubits = cirq.GridQubit.rect(1, n_qubits)    
+
+observables = [cirq.Z(q) for q in qubits]
+
+def generate_model_policy(qubits, n_layers, n_actions, beta, observables):
+    #keras model for data reuploading policy
+
+    input_tensor = tf.keras.Input(shape=(len(qubits),),
+                                  dtype=tf.dtypes.float32,
+                                  name='input')
+    re_uploading_pqc = VQCReuploading(qubits, n_layers, 
+                                      observables)([input_tensor])
+    process = tf.keras.Sequential([
+        Nonalternating(n_actions),
+        tf.keras.layers.Lambda(lambda x: x*beta),
+        tf.keras.layers.Softmax()
+    ],
+        name='observable-policy')
+    policy = process(re_uploading_pqc)
+    model = tf.keras.Model(inputs=[input_tensor], outputs=policy)
+
+    return model
+
+model = generate_model_policy(qubits, n_layers, n_bits, 1.0, observables)
+
