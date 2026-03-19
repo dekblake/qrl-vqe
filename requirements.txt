@@ -1,0 +1,11 @@
+tensorflow==2.18.1 as tf
+tensorflow-quantum==0.7.6
+gymnasium
+keras==2
+cirq
+sympy
+numpy
+functools import reduce
+collections
+matplotlib.pyplot
+cirq.contrib.svg
