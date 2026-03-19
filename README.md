@@ -1,17 +1,13 @@
 # qrl-vqe
 
 [_A Deep Reinforcement Learning Framework for the
-Financial Portfolio Management Problem_]
-(https://arxiv.org/pdf/1706.10059)
+Financial Portfolio Management Problem_](https://arxiv.org/pdf/1706.10059)
 
 [_Variational Quantum Circuit-Based Reinforcement
-Learning for Dynamic Portfolio Optimization_]
-(https://arxiv.org/pdf/2601.18811)
+Learning for Dynamic Portfolio Optimization_](https://arxiv.org/pdf/2601.18811)
 
 [_Parametrized Quantum Policies
-for Reinforcement Learning_]
-(https://arxiv.org/pdf/2103.05577)
+for Reinforcement Learning_](https://arxiv.org/pdf/2103.05577)
 
 [_Expressibility and entangling capability of parameterized quantum circuits for hybrid
-quantum-classical algorithms_]
-(https://arxiv.org/pdf/1905.10876)
+quantum-classical algorithms_](https://arxiv.org/pdf/1905.10876)
