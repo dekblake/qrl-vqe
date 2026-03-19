@@ -13,7 +13,7 @@ from cirq.contrib.svg import SVGCircuit
 tf.get_logger().setLevel('ERROR')
 
 def Rotation(qubit, symbols):
-    #gates that rotatate classical data points around bloch sphere
+    #gates that rotate classical data points around bloch sphere
     
     return [
         cirq.rx(symbols[0])(qubit),    
@@ -52,24 +52,25 @@ def VQCircuit(qubits, n_layers):
     circuit = cirq.Circuit()
     for l in range(n_layers): 
 
-        #variational layer
+        #initial variational layer
         circuit += cirq.Circuit(
                     Rotation(q, params[l,i]) for i,q in enumerate(qubits)
                     )
+        #circular entanglement topology
         circuit += Entangling(qubits)
 
-        #encoding layer
+        #encoding layer + data inputs
         circuit += cirq.Circuit(cirq.rx(x_inputs[l, i])(q) for i,q in enumerate(qubits))
         circuit += cirq.Circuit(cirq.ry(y_inputs[l, i])(q) for i,q in enumerate(qubits))
         circuit += cirq.Circuit(cirq.rz(z1_inputs[l, int(i/2)])(q) for i,q in enumerate(qubits) if i % 2 == 0)
         circuit += cirq.Circuit(cirq.rz(z2_inputs[l, int((i-1)/2)])(q) for i,q in enumerate(qubits) if i % 2 == 1)
 
-        #last variational layer
+        #last variational layer + weights
         circuit += cirq.Circuit(Rotation(q, params[n_layers, i]) 
                                 for i, q in enumerate(qubits))
       #flatten inputs
     args = (x_inputs, y_inputs, z1_inputs, z2_inputs)
-    inputs = np.concatenate(args).ravel().tolist()
+    inputs = np.concatenate(args).ravel().tolist()   
 
     return circuit, list(params.ravel().tolist()), list(inputs)
 
