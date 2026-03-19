@@ -1,6 +1,5 @@
 import tensorflow as tf
 import tensorflow_quantum as tfq
-
 import gymnasium as gym
 import cirq
 import sympy
