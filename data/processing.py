@@ -1,11 +1,9 @@
 import yfinance as yf
 import pandas as pd
-import numpy as np
 import datetime as dt 
 
-def test_train(tickers, interval):
-    start = dt.datetime(2020, 1, 1)
-    end = dt.datetime(2025, 1, 1)
+def test_train(tickers, interval, start, end):
+    
 
     data = yf.download(tickers, interval, start, end)['Close']
 
@@ -33,9 +31,11 @@ if __name__ == "__main__":
     'XOM',   # Exxon Mobil 
     'JNJ',   # Johnson & Johnson 
     'TSLA'   # Tesla 
-]
+    ]
+    
+    start = dt.datetime(2020, 1, 1)
+    end = dt.datetime(2025, 1, 1)
+    train_set, test_set = test_train(assets, "1d", start, end)
 
-train_set, test_set = test_train(assets)
-
-train_set.to_csv("data/raw/train_set.csv")
-test_set.to_csv("data/raw/test_set.csv")
+    train_set.to_csv("data/train_set.csv")
+    test_set.to_csv("data/test_set.csv")
