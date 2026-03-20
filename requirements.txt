@@ -9,3 +9,4 @@ functools import reduce
 collections
 matplotlib.pyplot
 cirq.contrib.svg
+yfinance
