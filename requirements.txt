@@ -10,3 +10,6 @@ collections
 matplotlib.pyplot
 cirq.contrib.svg
 yfinance
+pandas
+numpy
+datetime
