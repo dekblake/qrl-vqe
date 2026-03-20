@@ -11,3 +11,9 @@ for Reinforcement Learning_](https://arxiv.org/pdf/2103.05577)
 
 [_Expressibility and entangling capability of parameterized quantum circuits for hybrid
 quantum-classical algorithms_](https://arxiv.org/pdf/1905.10876)
+
+[_Data re-uploading for a universal quantum classifier_](https://arxiv.org/pdf/1907.02085)
+
+[_Barren plateaus in quantum neural network training landscapes_](https://arxiv.org/pdf/1803.11173)
+
+[__]()
