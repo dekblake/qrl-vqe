@@ -1,8 +1,9 @@
-from source.environment import ResidualPortfolioEnv
+from source.environment import ResidualEnv
 # import your TFQ model here...
+from source.
 
 # 1. Initialize the Environment
-env = ResidualPortfolioEnv(num_assets=10)
+env = ResidualEnv(num_assets=10)
 
 # 2. Get the first state
 state, _ = env.reset()

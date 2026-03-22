@@ -2,6 +2,7 @@ import gymnasium as gym
 from gymnasium import spaces 
 import numpy as np 
 
+
 class ResidualEnv(gym.Env):
     def __init__(self, num_assets=10, risk_aversion=0.5, fee_pct=0.001):
         super(ResidualEnv, self).__init__()
