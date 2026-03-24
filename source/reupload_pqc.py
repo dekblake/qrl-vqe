@@ -80,7 +80,7 @@ circuit, _, _, = VQCircuit(qubits, n_layers)
 SVGCircuit(circuit)
 """
 
-#nothing changed
+"""#nothing changed
 class VQCReuploading(tf.keras.layers.Layer):
     #Applies variational angles and scaling parameters
 
@@ -174,5 +174,5 @@ def generate_model_policy(qubits, n_layers, n_actions, beta, observables):
 
     return model
 
-model = generate_model_policy(qubits, n_layers, n_bits, 1.0, observables)
+model = generate_model_policy(qubits, n_layers, n_bits, 1.0, observables)"""
 
