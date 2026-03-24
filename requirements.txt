@@ -1,4 +1,4 @@
-tensorflow==2.18.1 as tf
+tensorflow==2.18.1
 tensorflow-quantum==0.7.6
 gymnasium
 sympy
@@ -11,3 +11,4 @@ yfinance
 pandas
 numpy
 datetime
+collections

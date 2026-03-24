@@ -35,4 +35,4 @@ def eigen_circuit(qubits, layer_count, seed):
 """qubit_count, layer_count = 5, 3
 qubits = cirq.GridQubit.rect(1, qubit_count)
 circuit = eigen_circuit(qubits, layer_count, 1)
-SVGCircuit(circuit)"""
+SVGCircuit(circuit)""
