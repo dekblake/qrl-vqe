@@ -1,9 +1,9 @@
 tensorflow==2.18.1
 tensorflow-quantum==0.7.6
-gymnasium
+gymnasium[classic-control]==1.2.3
 sympy
 numpy
-functools import reduce
+functools 
 collections
 matplotlib.pyplot
 cirq.contrib.svg

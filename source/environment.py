@@ -16,7 +16,7 @@ class ResidualEnv(gym.Env):
 
         self.current_weights = np.zeros(num_assets)
         self.current_tiers = np.zeros(num_assets)
-
+        
     def _get_mock_market_data(self):
         #until ARIMA GARCH
         mu = np.random.uniform(-0.02, 0.05, self.num_assets)

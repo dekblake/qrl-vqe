@@ -96,7 +96,7 @@ class VQCReuploading(tf.keras.layers.Layer):
 
         circuit, theta_symbols, input_symbols = VQCircuit(qubits, n_layers)
         
-        theta_init = tf.random_uniform_initialiser(minval=0.0, maxval=np.pi)
+        theta_init = tf.random_uniform_initializer(minval=0.0, maxval=np.pi)
         self.theta = tf.Variable(initial_value=self.theta_init(
             shape=(1, len(theta_symbols)), dtyoe='float32'),
                                         trainable=True,

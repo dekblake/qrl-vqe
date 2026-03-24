@@ -1,3 +1,6 @@
+import os
+os.environ["TF_USE_LEGACY_KERAS"] = "1"
+
 from collections import defaultdict
 from source.environment import ResidualEnv
 from source.reupload_agent import generate_model_policy, qubits, observables
@@ -21,7 +24,7 @@ optimizer_var = tf.keras.optimizers.Adam(learning_rate=0.01, amsgrad=True)
 optimizer_out = tf.keras.optimizers.Adam(learning_rate=0.1, amsgrad=True)
 w_in, w_var, w_out = 0, 1, 2  # Make sure these match your model.trainable_variables indices!
 
-model = generate_model_policy(qubits, n_layers = 3, n_bits = 20, rate=1.0, observables)
+model = generate_model_policy(qubits, n_layers = 3, n_bits = 20, rate=1.0, obs= observables)
 
 
 # 3. The RL Step Loop
