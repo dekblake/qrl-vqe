@@ -4,7 +4,7 @@ import tensorflow_quantum as tfq
 import cirq
 import sympy
 
-from source.reupload_pqc import VQCircuit
+from reupload_pqc import VQCircuit
 
 
 class VQCReuploading(tf.keras.layers.Layer):
@@ -14,20 +14,22 @@ class VQCReuploading(tf.keras.layers.Layer):
                  qubits,
                  n_layers,
                  observables,
+                 input_dim=40,
                  activation='linear',
                  name="re-uploading_PQC"):
         super(VQCReuploading, self).__init__(name=name)
         self.n_layers = n_layers
         self.n_qubits = len(qubits)
+        self.input_dim = input_dim
 
         circuit, theta_symbols, input_symbols = VQCircuit(qubits, n_layers)
-        
+
         theta_init = tf.random_uniform_initializer(minval=0.0, maxval=np.pi)
         self.theta = tf.Variable(initial_value=theta_init(
             shape=(1, len(theta_symbols)), dtype='float32'),
                                         trainable=True,
                                         name='thetas')
-        lmbd_init = tf.ones(shape=(self.n_qubits*self.n_layers,))
+        lmbd_init = tf.ones(shape=(self.input_dim*self.n_layers,))
         self.lmbd = tf.Variable(initial_value=lmbd_init,
                                 dtype='float32',
                                 trainable=True,
@@ -48,9 +50,9 @@ class VQCReuploading(tf.keras.layers.Layer):
         tiled_up_circuits = tf.repeat(self.empty_circuit, repeats=batch_dim)
         tiled_up_thetas = tf.tile(self.theta, multiples=[batch_dim,1])
         tiled_up_inputs = tf.tile(inputs[0], multiples=[1, self.n_layers])
+
         scaled_inputs = tf.einsum('i, ji->ji', self.lmbd, tiled_up_inputs) #changed
-        squashed_inputs = tf.keras.layers.Activation(
-            self.activation)(scaled_inputs)
+        squashed_inputs = tf.keras.layers.Activation(self.activation)(scaled_inputs)
         
         joined_vars = tf.concat([tiled_up_thetas, squashed_inputs], axis=1)
         joined_vars = tf.gather(joined_vars, self.indices, axis=1)
@@ -88,14 +90,22 @@ def generate_model_policy(qubits, n_layers, n_actions, beta, observables):
     input_tensor = tf.keras.Input(shape=(40,),
                                   dtype=tf.dtypes.float32,
                                   name='input')
+    
+    half_input = input_tensor[:, :20]
+    padded_input = tf.keras.layers.Concatenate(axis=1)([input_tensor, half_input])
+    
+    #duplicated_input = tf.keras.layers.Concatenate(axis=1)([input_tensor, input_tensor])
+
     re_uploading_pqc = VQCReuploading(qubits, n_layers, 
-                                      observables)([input_tensor])
+                                      observables,
+                                      input_dim=60)([padded_input])
     process = tf.keras.Sequential([
         Nonalternating(n_actions),
         tf.keras.layers.Lambda(lambda x: x*beta),
-        tf.keras.layers.Activation('Sigmoid')  #changed for combinatorial QUBO
+        tf.keras.layers.Activation('sigmoid')  #changed for combinatorial QUBO
     ],
         name='observable-policy')
+    
     policy = process(re_uploading_pqc)
     model = tf.keras.Model(inputs=[input_tensor], outputs=policy)
 

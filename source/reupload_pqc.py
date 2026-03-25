@@ -32,6 +32,7 @@ def VQCircuit(qubits, n_layers):
     #The data-reuploading PQC
 
     number_qubits = len(qubits)
+    half_qubits = int(number_qubits / 2)
 
     #symbols for variational angles
     params = sympy.symbols(f'theta(0:{3*(n_layers+1)*number_qubits})')
@@ -42,10 +43,10 @@ def VQCircuit(qubits, n_layers):
     x_inputs = np.asarray(x_inputs).reshape((n_layers, number_qubits, ))
     y_inputs = sympy.symbols(f'y(0:{n_layers})' + f'_(0:{number_qubits})')
     y_inputs = np.asarray(y_inputs).reshape((n_layers, number_qubits))
-    z1_inputs = sympy.symbols(f'z(0:{n_layers})' + f'_A(0:{number_qubits})')
-    z1_inputs = np.asarray(z1_inputs).reshape((n_layers, number_qubits))
-    z2_inputs = sympy.symbols(f'z(0:{n_layers})' + f'_B(0:{number_qubits})')
-    z2_inputs = np.asarray(z2_inputs).reshape((n_layers, number_qubits))
+    z1_inputs = sympy.symbols(f'z(0:{n_layers})' + f'_A(0:{half_qubits})')
+    z1_inputs = np.asarray(z1_inputs).reshape((n_layers, half_qubits))
+    z2_inputs = sympy.symbols(f'z(0:{n_layers})' + f'_B(0:{half_qubits})')
+    z2_inputs = np.asarray(z2_inputs).reshape((n_layers, half_qubits))
 
     #literal circuit: bloch variational layer, encoding, free variational layer
     circuit = cirq.Circuit()
@@ -67,11 +68,11 @@ def VQCircuit(qubits, n_layers):
         #last variational layer + weights
         circuit += cirq.Circuit(Rotation(q, params[n_layers, i]) 
                                 for i, q in enumerate(qubits))
-      #flatten inputs
-    args = (x_inputs, y_inputs, z1_inputs, z2_inputs)
-    inputs = np.concatenate(args).ravel().tolist()   
+    
+    # flatten inputs by turning each into a 1D list FIRST, then adding them together
+    inputs = list(x_inputs.ravel()) + list(y_inputs.ravel()) + list(z1_inputs.ravel()) + list(z2_inputs.ravel())
 
-    return circuit, list(params.ravel().tolist()), list(inputs)
+    return circuit, list(params.ravel().tolist()), inputs
 
 """
 n_qubits, n_layers = 4, 1

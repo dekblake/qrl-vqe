@@ -10,7 +10,7 @@ class ResidualEnv(gym.Env):
         self.risk_aversion = risk_aversion
         self.fee_pct = fee_pct
 
-        self.action_space = spaces.Multibinary(num_assets*2)
+        self.action_space = spaces.MultiBinary(num_assets*2)
 
         self.observation_space = spaces.Box(low=-1.0, high=1.0, shape=(num_assets * 4,), dtype=np.float32)
 
@@ -59,7 +59,7 @@ class ResidualEnv(gym.Env):
         # 4. FINRL MATH: Transaction Costs (Turnover)
         # How much of the portfolio weight had to be shifted?
         turnover = np.sum(np.abs(new_weights - self.current_weights))
-        transaction_cost = turnover * self.transaction_fee_percent
+        transaction_cost = turnover * self.fee_pct
         
         # 5. FINRL MATH: Portfolio Return & Risk (Markowitz)
         expected_return = np.dot(new_weights, mu)
