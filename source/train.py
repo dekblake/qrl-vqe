@@ -8,6 +8,12 @@ import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 
+import multiprocessing
+cores = multiprocessing.cpu_count()
+tf.config.threading.set_inter_op_parallelism_threads(cores)
+tf.config.threading.set_intra_op_parallelism_threads(cores)
+print(f"Forcing TensorFlow to use all {cores} CPU cores!")
+
 
 # Hyperparameters
 batch_size = 10
@@ -74,6 +80,7 @@ def compute_returns(rewards_history, gamma):
 
 
 # REMOVED @tf.function (See point 3 below for why)
+@tf.function(reduce_retracing=True)
 def reinforce_update(states, actions, returns, model):
     with tf.GradientTape() as tape:
         tape.watch(model.trainable_variables)

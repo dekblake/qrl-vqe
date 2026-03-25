@@ -76,7 +76,7 @@ class Nonalternating(tf.keras.layers.Layer):
 
 
 n_qubits = 20  # Dimension of the state vectors in CartPole
-n_layers = 3  # Number of layers in the PQC
+n_layers = 1  # Number of layers in the PQC
 n_bits = 20  # Number of actions in CartPole
 
 qubits = cirq.GridQubit.rect(1, n_qubits)    
