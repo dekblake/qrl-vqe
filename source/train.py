@@ -12,7 +12,7 @@ print(f"Forcing TensorFlow to use all {cores} CPU cores!")
 
 from collections import defaultdict
 from environment import ResidualEnv
-from reupload_agent import generate_model_policy, qubits, observables, num_assets
+from reupload_agent import generate_model_policy, qubits, observables, num_assets, n_bits, n_layers
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -28,7 +28,7 @@ optimizer_out = tf.keras.optimizers.Adam(learning_rate=0.1, amsgrad=True)
 w_in, w_var, w_out = 0, 1, 2
 
 # Build the model
-model = generate_model_policy(qubits, n_layers=3, n_actions=20, 
+model = generate_model_policy(qubits, n_layers=n_layers, n_actions=n_bits, 
                               beta=1.0, observables=observables )
 
 
