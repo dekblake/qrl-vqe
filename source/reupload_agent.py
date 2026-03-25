@@ -6,6 +6,18 @@ import sympy
 
 from reupload_pqc import VQCircuit
 
+# 1. SET YOUR ASSETS HERE
+num_assets = 7  
+
+# 2. LET THE MATH DO THE REST (Do not type 14 or 28 manually!)
+n_qubits = num_assets * 2            # 14 qubits
+n_bits = num_assets * 2              # 14 actions
+state_dim = num_assets * 4           # 28 environment features
+pqc_input_dim = n_qubits * 3         # 42 circuit inputs (14x + 14y + 7z_even + 7z_odd)
+n_layers = 1                         # Keep at 1 for speed!
+
+qubits = cirq.GridQubit.rect(1, n_qubits)    
+observables = [cirq.Z(q) for q in qubits]
 
 class VQCReuploading(tf.keras.layers.Layer):
     #Applies variational angles and scaling parameters
@@ -76,30 +88,31 @@ class Nonalternating(tf.keras.layers.Layer):
         return inputs * self.w #to avoid mixing of 20 qubits before scaling
 
 
-n_qubits = 20  # Dimension of the state vectors in CartPole
+"""n_qubits = 20  # Dimension of the state vectors in CartPole
 n_layers = 1  # Number of layers in the PQC
 n_bits = 20  # Number of actions in CartPole
 
 qubits = cirq.GridQubit.rect(1, n_qubits)    
 
-observables = [cirq.Z(q) for q in qubits]
+observables = [cirq.Z(q) for q in qubits]"""
 
 def generate_model_policy(qubits, n_layers, n_actions, beta, observables):
     #keras model for data reuploading policy
 
     #increased inputs for selected market features 
-    input_tensor = tf.keras.Input(shape=(40,),
+    input_tensor = tf.keras.Input(shape=(state_dim,),
                                   dtype=tf.dtypes.float32,
                                   name='input')
     
-    half_input = input_tensor[:, :20]
+    pad_size = len(qubits)
+    half_input = input_tensor[:, :pad_size]
     padded_input = tf.keras.layers.Concatenate(axis=1)([input_tensor, half_input])
     
     #duplicated_input = tf.keras.layers.Concatenate(axis=1)([input_tensor, input_tensor])
 
     re_uploading_pqc = VQCReuploading(qubits, n_layers, 
                                       observables,
-                                      input_dim=60)([padded_input])
+                                      input_dim=pqc_input_dim)([padded_input])
     process = tf.keras.Sequential([
         Nonalternating(n_actions),
         tf.keras.layers.Lambda(lambda x: x*beta),
