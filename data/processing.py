@@ -21,17 +21,14 @@ def test_train(tickers, interval, start, end):
 if __name__ == "__main__":
 
     assets = [
-    'SPY',   # US Large Cap Equities 
-    'TLT',   # 20+ Year Treasury Bonds 
-    'GLD',   # Gold 
-    'USO',   # Crude Oil
-    'VNQ',   # Real Estate / REITs
-    'EEM',   # Emerging Markets 
-    'UUP',   # US Dollar Index 
-    'XOM',   # Exxon Mobil 
-    'JNJ',   # Johnson & Johnson 
-    'TSLA'   # Tesla 
-    ]
+    'SPY',       # 1. The Benchmark (Broad US Market)
+    'TLT',       # 2. The Safe Haven (20+ Year Bonds for risk-off days)
+    'GLD',       # 3. The Hedge (Gold, non-correlated to tech)
+    'BTC-USD',   # 4. The Modern Crypto (Massive volatility and growth)
+    'NVDA',      # 5. The AI Tech Giant (High momentum, sector-specific)
+    'TSLA',      # 6. The Cult Stock (Retail-driven, highly volatile movements)
+    'XLE'        # 7. Energy Sector (Captures oil/gas movements without single-company risk like XOM)
+    ]   
     
     start = dt.datetime(2020, 1, 1)
     end = dt.datetime(2025, 1, 1)
