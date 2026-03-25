@@ -1,19 +1,20 @@
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ["TF_USE_LEGACY_KERAS"] = "1"
 
-from collections import defaultdict
-from environment import ResidualEnv
-from reupload_agent import generate_model_policy, qubits, observables
-import tensorflow as tf
-import numpy as np
-import matplotlib.pyplot as plt
-
 import multiprocessing
+import tensorflow as tf
+
 cores = multiprocessing.cpu_count()
 tf.config.threading.set_inter_op_parallelism_threads(cores)
 tf.config.threading.set_intra_op_parallelism_threads(cores)
 print(f"Forcing TensorFlow to use all {cores} CPU cores!")
 
+from collections import defaultdict
+from environment import ResidualEnv
+from reupload_agent import generate_model_policy, qubits, observables
+import numpy as np
+import matplotlib.pyplot as plt
 
 # Hyperparameters
 batch_size = 10
