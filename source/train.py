@@ -17,13 +17,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Hyperparameters
-batch_size = 10
+batch_size = 20
 n_episodes = 1000
-gamma = 0.99
+gamma = 0.9
 env_kwargs = {'num_assets': num_assets}
 
-optimizer_in = tf.keras.optimizers.Adam(learning_rate=0.1, amsgrad=True)
 optimizer_var = tf.keras.optimizers.Adam(learning_rate=0.01, amsgrad=True)
+optimizer_in = tf.keras.optimizers.Adam(learning_rate=0.1, amsgrad=True)
 optimizer_out = tf.keras.optimizers.Adam(learning_rate=0.1, amsgrad=True)
 w_in, w_var, w_out = 0, 1, 2
 
