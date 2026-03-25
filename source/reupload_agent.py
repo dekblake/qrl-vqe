@@ -41,7 +41,8 @@ class VQCReuploading(tf.keras.layers.Layer):
 
         self.activation = activation
         self.empty_circuit = tfq.convert_to_tensor([cirq.Circuit()])
-        self.computation_layer = tfq.layers.ControlledPQC(circuit, observables)
+        self.computation_layer = tfq.layers.ControlledPQC(circuit, observables,
+                                                          differentiator=tfq.differentiators.Adjoint())
 
     def call(self, inputs): 
         #inputs[0] = encoding data for the state
