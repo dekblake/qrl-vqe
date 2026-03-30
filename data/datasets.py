@@ -77,10 +77,11 @@ if __name__ == "__main__":
         mu_today = [row[f"{asset}_mu"] for asset in assets]
         var_today = [row[f"{asset}_var"] for asset in assets]
 
+        recent_returns_df = full_data.loc[:date].tail(60)
+        
         # Solve for today's optimal portfolio
         optimal_tiers = portfolio_optimisation(
-            mu_today, var_today, vqe_circuit, vqe_param_strings
-        )
+            mu_today, var_today, recent_returns_df, vqe_circuit, vqe_param_strings)
 
         for i, asset in enumerate(assets):
             master_df.at[date, f"{asset}_vqe"] = optimal_tiers[i]
