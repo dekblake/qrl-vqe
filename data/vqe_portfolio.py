@@ -55,9 +55,8 @@ def portfolio_optimisation(mu_today, var_today, recent_returns_df, ansatz_circui
     optimiser = tf.keras.optimizers.Adam(learning_rate=0.1)
 
     @tf.function
-    for step in range(50):
+    def train_step():
         with tf.GradientTape() as tape:
-
             energy = expectation_layer(
                 circuit_tensor,
                 symbol_names=param_strings,
@@ -66,13 +65,19 @@ def portfolio_optimisation(mu_today, var_today, recent_returns_df, ansatz_circui
             )
             loss = energy[0][0]
 
-        grads = tape.gradient(loss,[theta])
-        optimiser.apply_gradients(zip(grads, [theta]))
+        grads = tape.gradient(loss, [theta])
+        optimizer.apply_gradients(zip(grads, [theta]))
+        return loss
+
+    # Run the compiled training step
+    for step in range(50):
+        train_step()
     
     resolver = cirq.ParamResolver(dict(zip(param_strings, theta.numpy())))
     resolved_circuit = cirq.resolve_parameters(ansatz_circuit, resolver)
 
-    simulator = cirq.Simulator()
+    # NEW: Use qsimcirq to multithread the final state vector simulation
+    simulator = qsimcirq.QSimSimulator() 
     result = simulator.simulate(resolved_circuit)
 
     state_probs = np.abs(result.state_vector())**2
