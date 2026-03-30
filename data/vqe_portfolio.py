@@ -45,6 +45,46 @@ def portfolio_optimisation(mu_today, var_today, recent_returns_df, ansatz_circui
     hamiltonian = portfolio_hamiltonian(qubits, mu_today, cov_matrix)
 
     circuit_tensor = tfq.convert_to_tensor([ansatz_circuit])
+    expectation_layer = tfq.layers.Expectation(differentiator = tfq.differentiation.Adjoint())
+
+    theta = tf.Variable(np.random.uniform(0, 2*np.pi, len(param_strings)), dtype=tf.float32)
+    opitimiser = tf.keras.opitimizera.Adam(learning_rate=0.1)
+
+    for step in range(50):
+        with tf.GradientTape() as tape:
+
+            energy = expectation_layer(
+                circuit_tensor,
+                symbol_names=param_strings,
+                symbol_values=[theta],
+                operators=hamiltonian
+            )
+            loss = energy[0][0]
+
+        grads = tape.gradient(loss,[theta])
+        optimizer.apply_gradients(zip(grads, [theta]))
+    
+    resolver = cirq.ParamResolver(dict(zip(param_strings, theta.numpy())))
+    resolved_circuit = cirq.resolve_parameters(ansatz_circuit, resolver)
+
+    simulator = cirq.Simulator()
+    result = simulator.simulate(resolved_circuit)
+
+    state_probs = np.abs(result.state_vector())**2
+    best_state_idx = np.argmax(state_probs)
+
+    binary_string = format(best_state_idx, f'0{len(qubits)}b')
+    bits = [int(b) for b in binary_string]
+
+    optimal_tiers = []
+    for i in range(num_assets):
+        tier = 1 * bits[2*i] + 2*bits[2*i+1] 
+        optimal_tiers.append(tier)
+
+    return optimal_tiers
+
+
+    
     
 
 
