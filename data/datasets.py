@@ -10,8 +10,8 @@ from vqe_portfolio import portfolio_optimisation
 from variational_eigensolver import eigen_circuit
 
 
-def test_train(tickers, interval, start, end):
-    data = yf.download(tickers, interval, start, end)['Close']
+def test_train(tickers, start, end):
+    data = yf.download(tickers, start, end)['Close']
     data = data.ffill().dropna()
 
     # Log returns
@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
     # test/train split
     print("Downloading Data...")
-    train_set, test_set = test_train(assets, "1d", start, end)
+    train_set, test_set = test_train(assets, start, end)
 
     
     full_data = pd.concat([train_set, test_set])
