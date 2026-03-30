@@ -4,46 +4,50 @@ import numpy as np
 
 
 class ResidualEnv(gym.Env):
-    def __init__(self, num_assets=10, risk_aversion=0.5, fee_pct=0.001):
+    def __init__(self, num_assets, mu_data, var_data, vqe_data, risk_aversion=0.5, fee_pct=0.001):
         super(ResidualEnv, self).__init__()
         self.num_assets = num_assets
         self.risk_aversion = risk_aversion
         self.fee_pct = fee_pct
 
-        self.action_space = spaces.MultiBinary(num_assets*2)
+        self.mu_data = mu_data
+        self.var_data = var_data
+        self.vqe_data = vqe_data
 
-        self.observation_space = spaces.Box(low=-1.0, high=1.0, shape=(num_assets * 4,), dtype=np.float32)
+        self.current_day = 0
+        self.max_days = len(mu_data) - 1
+
+        self.action_space = spaces.MultiBinary(num_assets*2)
+        self.observation_space = spaces.Box(low=-10.0, high=10.0, shape=(num_assets * 4,), dtype=np.float32)
 
         self.current_weights = np.zeros(num_assets)
         self.current_tiers = np.zeros(num_assets)
         
-    def _get_mock_market_data(self):
-        #until ARIMA GARCH
-        mu = np.random.uniform(-0.02, 0.05, self.num_assets)
+    def _get_obs(self):
+
+        #ARIMA GARCH + VQE
+        mu = self.mu_data[self.current_day]
+        var = self.var_data[self.current_day]
+        vqe_target = self.vqe_data[self.current_day]
         
-        # Create a mock Covariance matrix (Sigma)
-        A = np.random.rand(self.num_assets, self.num_assets)
-        Sigma = np.dot(A, A.T) * 0.01 
-        var = np.diag(Sigma) # Extract just the diagonal for the state space
+        obs = np.concatenate([mu, var, vqe_target, self.current_tiers]).astype(np.float32)
 
-        vqe_target = np.random.randint(0, 4, self.num_assets)
-
-        return mu, Sigma, var, vqe_target
+        return obs
     
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
+
+        # starting at random days in the dataset 
+        self.current_day = np.random.randint(0, self.max_days - 30)
+
         self.current_weights = np.zeros(self.num_assets)
         self.current_tiers = np.zeros(self.num_assets)
         
-        mu, _, var, vqe_target = self._get_mock_market_data()
-        
-        # Construct the 40-feature state tensor
-        obs = np.concatenate([mu, var, vqe_target, self.current_tiers]).astype(np.float32)
-        return obs, {}
+        return self._get_obs(), {}
 
-    def step(self, action_20_bit):
+    def step(self, action_bits):
         # 1. DECODE ACTIONS (From 20 bits -> 10 integer tiers 0,1,2,3)
-        action_pairs = np.reshape(action_20_bit, (self.num_assets, 2))
+        action_pairs = np.reshape(action_bits, (self.num_assets, 2))
         target_tiers = action_pairs[:, 0] * 2 + action_pairs[:, 1]
         
         # 2. CALCULATE WEIGHTS (Normalize tiers so they sum to 1.0)
@@ -54,7 +58,11 @@ class ResidualEnv(gym.Env):
             new_weights = target_tiers / total_tiers
             
         # 3. GET TODAY'S MARKET DATA
-        mu, Sigma, var, vqe_target = self._get_mock_market_data()
+        mu = self.mu_data[self.current_day]
+        var = self.var_data[self.current_day]
+
+        # diagonal covariance matrix from the variances for the reward calculation 
+        Sigma = np.diag(var)
         
         # 4. FINRL MATH: Transaction Costs (Turnover)
         # How much of the portfolio weight had to be shifted?
@@ -72,11 +80,13 @@ class ResidualEnv(gym.Env):
         # 7. UPDATE STATE FOR TOMORROW
         self.current_weights = new_weights
         self.current_tiers = target_tiers
+        self.current_day += 1
+
+        # end of data check
+        terminated = self.current_day >= self.max_days
         
-        # Create tomorrow's observation
-        next_obs = np.concatenate([mu, var, vqe_target, self.current_tiers]).astype(np.float32)
+        # Create tomorrow's observation with check
+        next_obs = self._get_obs() if not terminated else np.zeros(self.observation_space.shape)
         
-        # We'll just say an episode is done after a fixed time in the training loop
-        terminated = False 
         
         return next_obs, float(reward), terminated, False, {}
