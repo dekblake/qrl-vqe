@@ -1,22 +1,31 @@
-import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-os.environ["TF_USE_LEGACY_KERAS"] = "1"
-
-import multiprocessing
-import tensorflow as tf 
-
-# Force TensorFlow to use all available Kaggle CPU cores
-cores = multiprocessing.cpu_count()
-tf.config.threading.set_inter_op_parallelism_threads(cores)
-tf.config.threading.set_intra_op_parallelism_threads(cores)
-print(f"Forcing TensorFlow to use all {cores} CPU cores!")
-
 import cirq
-import sympy 
 import numpy as np
+import tensorflow as tf 
 import tensorflow_quantum as tfq
-
 from variational_eigensolver import eigen_circuit
+
+# =================================================================
+# 1. GLOBAL SETUP: Define these ONCE so they never re-compile
+# =================================================================
+expectation_layer = tfq.layers.Expectation(differentiator=tfq.differentiators.Adjoint())
+optimizer = tf.keras.optimizers.Adam(learning_rate=0.1)
+global_theta = None # We will reuse this variable every day
+
+@tf.function(reduce_retracing=True)
+def fast_train_step(circuit_tensor, hamiltonian_tensor, theta, param_strings):
+    with tf.GradientTape() as tape:
+        energy = expectation_layer(
+            circuit_tensor,
+            symbol_names=param_strings,
+            symbol_values=[theta],
+            operators=hamiltonian_tensor
+        )
+        loss = energy[0][0]
+        
+    grads = tape.gradient(loss, [theta])
+    optimizer.apply_gradients(zip(grads, [theta]))
+    return loss
+
 
 def portfolio_hamiltonian(qubits, mu_today, cov_matrix, risk_aversion=0.5):
     # ... [Keep your exact hamiltonian logic here] ...
@@ -44,9 +53,9 @@ def portfolio_hamiltonian(qubits, mu_today, cov_matrix, risk_aversion=0.5):
 
 
 def portfolio_optimisation(mu_today, var_today, recent_returns_df, ansatz_circuit, param_strings): 
+    global global_theta # Pull in the global variable
 
     num_assets = len(mu_today)
-
     std_devs = np.sqrt(var_today)
     correlation_mat = recent_returns_df.corr().to_numpy()
     cov_matrix = np.outer(std_devs, std_devs) * correlation_mat
@@ -55,38 +64,24 @@ def portfolio_optimisation(mu_today, var_today, recent_returns_df, ansatz_circui
     hamiltonian = portfolio_hamiltonian(qubits, mu_today, cov_matrix)
 
     circuit_tensor = tfq.convert_to_tensor([ansatz_circuit])
-    expectation_layer = tfq.layers.Expectation(differentiator=tfq.differentiators.Adjoint())
-
-    theta = tf.Variable(np.random.uniform(0, 2*np.pi, len(param_strings)), dtype=tf.float32)
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.1)
-
-    # ----------------------------------------------------
-    # NEW: Wrapping the optimization step in tf.function
-    # ----------------------------------------------------
-    @tf.function(reduce_retracing=True)
-    def train_step():
-        with tf.GradientTape() as tape:
-            energy = expectation_layer(
-                circuit_tensor,
-                symbol_names=param_strings,
-                symbol_values=[theta],
-                operators=hamiltonian
-            )
-            loss = energy[0][0]
-
-        grads = tape.gradient(loss, [theta])
-        optimizer.apply_gradients(zip(grads, [theta]))
-        return loss
-
-    # Execute the fast compiled graph
-    for step in range(50):
-        train_step()
-    # ----------------------------------------------------
     
-    resolver = cirq.ParamResolver(dict(zip(param_strings, theta.numpy())))
+    # 2. Convert Hamiltonian to a 2D Tensor so tf.function accepts it without retracing
+    hamiltonian_tensor = tf.expand_dims(tfq.convert_to_tensor([hamiltonian]), axis=0)
+
+    # 3. Reuse the same theta variable every day, just give it new random starting weights
+    if global_theta is None:
+        global_theta = tf.Variable(np.random.uniform(0, 2*np.pi, len(param_strings)), dtype=tf.float32)
+    else:
+        global_theta.assign(np.random.uniform(0, 2*np.pi, len(param_strings)).astype(np.float32))
+
+    # 4. BLAST THROUGH 50 STEPS USING THE GLOBALLY COMPILED GRAPH
+    for step in range(50):
+        fast_train_step(circuit_tensor, hamiltonian_tensor, global_theta, param_strings)
+    
+    # Get final parameters
+    resolver = cirq.ParamResolver(dict(zip(param_strings, global_theta.numpy())))
     resolved_circuit = cirq.resolve_parameters(ansatz_circuit, resolver)
 
-    # Standard Cirq simulator is perfectly fine here since it only runs ONCE
     simulator = cirq.Simulator()
     result = simulator.simulate(resolved_circuit)
 
@@ -102,9 +97,6 @@ def portfolio_optimisation(mu_today, var_today, recent_returns_df, ansatz_circui
         optimal_tiers.append(tier)
 
     return optimal_tiers
-
-    
-    
 
 
 
