@@ -2,18 +2,21 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import datetime as dt
+from statsmodels.tsa.arima.model import ARIMA
+import cirq
 
+# 1. IMPORT YOUR CUSTOM MATH & QUANTUM MODULES
+from arima_garch import mf2_garch_estimate
+from vqe_solver import eigen_circuit, run_vqe_portfolio_optimization
 
 def test_train(tickers, interval, start, end):
-
     data = yf.download(tickers, interval, start, end)['Close']
-
     data = data.ffill().dropna()
-
+    
+    # Log returns (Perfect!)
     returns = np.log(data / data.shift(1)).dropna()
 
     split = int(len(returns)*.8)
-
     train_returns = returns.iloc[:split]
     test_returns = returns.iloc[split:]
 
@@ -23,20 +26,73 @@ def test_train(tickers, interval, start, end):
 if __name__ == "__main__":
 
     assets = [
-        'SPY',       # 1. The Benchmark (Broad US Market)
-        'TLT',       # 2. The Safe Haven (20+ Year Bonds for risk-off days)
-        'GLD',       # 3. The Hedge (Gold, non-correlated to tech)
-        'BTC-USD',   # 4. The Modern Crypto (Massive volatility and growth)
-        'NVDA',      # 5. The AI Tech Giant (High momentum, sector-specific)
-        # 6. The Cult Stock (Retail-driven, highly volatile movements)
-        'TSLA',
-        # 7. Energy Sector (Captures oil/gas movements without single-company risk like XOM)
-        'XLE'
+        'SPY', 'TLT', 'GLD', 'BTC-USD', 'NVDA', 'TSLA', 'XLE'
     ]
 
     start = dt.datetime(2020, 1, 1)
     end = dt.datetime(2025, 1, 1)
+    
+    # 2. DOWNLOAD DATA AND SPLIT
+    print("Downloading Data...")
     train_set, test_set = test_train(assets, "1d", start, end)
 
-    train_set.to_csv("data/train_set.csv")
-    test_set.to_csv("data/test_set.csv")
+    # Combine them to give GARCH and ARIMA a continuous timeline for the warmup!
+    full_data = pd.concat([train_set, test_set])
+    variance_features = pd.DataFrame(index=full_data.index)
+    m_window = 252
+
+    # 3. RUN ARIMA AND MF2-GARCH
+    for asset in assets:
+        print(f"Estimating ARIMA and MF2-GARCH for {asset}...")
+        y_array = full_data[asset].dropna().to_numpy()
+
+        # --- ARIMA ---
+        arima_model = ARIMA(y_array, order=(1, 0, 0)).fit()
+        full_data[f"{asset}_mu"] = arima_model.fittedvalues
+
+        # --- MF2-GARCH ---
+        coeff, e, h, tau, V_m = mf2_garch_estimate(y_array, m=m_window)
+
+        # Pad the historical features
+        pad_length = len(y_array) - len(h)
+        padding = [np.nan] * pad_length
+        variance_features[f"{asset}_var"] = padding + list(h * tau)
+
+    # Merge and drop the 252-day GARCH warmup period
+    master_df = full_data.join(variance_features).dropna()
+
+    # 4. PREPARE THE VQE CIRCUIT
+    print("Preparing VQE Circuit...")
+    vqe_qubits = cirq.GridQubit.rect(1, 14) # 14 qubits for 7 assets
+    vqe_circuit, vqe_params = eigen_circuit(vqe_qubits, layer_count=3, seed=42)
+    vqe_param_strings = [str(p) for p in vqe_params]
+
+    # 5. RUN THE VQE SOLVER
+    print("Running Daily VQE Solver...")
+    for asset in assets:
+        master_df[f"{asset}_vqe"] = 0
+
+    for date, row in master_df.iterrows():
+        mu_today = [row[f"{asset}_mu"] for asset in assets]
+        var_today = [row[f"{asset}_var"] for asset in assets]
+
+        # Solve for today's optimal portfolio!
+        optimal_tiers = run_vqe_portfolio_optimization(
+            mu_today, var_today, vqe_circuit, vqe_param_strings
+        )
+
+        for i, asset in enumerate(assets):
+            master_df.at[date, f"{asset}_vqe"] = optimal_tiers[i]
+
+    # 6. SPLIT BACK INTO TRAIN AND TEST SETS
+    print("Splitting and Saving...")
+    test_start_date = test_set.index[0]
+    
+    master_train = master_df[master_df.index < test_start_date]
+    master_test = master_df[master_df.index >= test_start_date]
+
+    # Save to final CSVs
+    master_train.to_csv("data/master_train_env.csv")
+    master_test.to_csv("data/master_test_env.csv")
+    
+    print(f"Done! Saved {len(master_train)} Train days and {len(master_test)} Test days.")
