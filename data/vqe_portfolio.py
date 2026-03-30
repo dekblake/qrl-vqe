@@ -69,10 +69,16 @@ def portfolio_optimisation(mu_today, var_today, recent_returns_df, ansatz_circui
     hamiltonian_tensor = tf.expand_dims(tfq.convert_to_tensor([hamiltonian]), axis=0)
 
     # 3. Reuse the same theta variable every day, just give it new random starting weights
+    # 3. Reuse the same theta variable every day, but randomize the starting weights
     if global_theta is None:
         global_theta = tf.Variable(np.random.uniform(0, 2*np.pi, len(param_strings)), dtype=tf.float32)
     else:
         global_theta.assign(np.random.uniform(0, 2*np.pi, len(param_strings)).astype(np.float32))
+
+    # --> NEW: Wipe Adam's momentum from yesterday so today is a fresh estimate
+    if len(optimizer.variables()) > 0:
+        for var in optimizer.variables():
+            var.assign(tf.zeros_like(var))
 
     # 4. BLAST THROUGH 50 STEPS USING THE GLOBALLY COMPILED GRAPH
     for step in range(50):
