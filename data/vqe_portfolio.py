@@ -1,4 +1,4 @@
-import circuit
+import cirq
 import sympy 
 import numpy as np
 import tensorflow as tf 
