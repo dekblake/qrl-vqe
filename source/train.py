@@ -14,13 +14,32 @@ from collections import defaultdict
 from environment import ResidualEnv
 from reupload_agent import generate_model_policy, qubits, observables, num_assets, n_bits, n_layers
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+
+
+# loading the dataset
+print("Loading Master Environment Data...")
+master_df = pd.read_csv("data/master_train_env.csv", index_col=0)
+asset_list = ['SPY', 'TLT', 'GLD', 'BTC-USD', 'NVDA', 'TSLA', 'XLE']
+
+mu_data = master_df[[f"{a}_mu" for a in asset_list]].to_numpy(dtype=np.float32)
+var_data = master_df[[f"{a}_var" for a in asset_list]].to_numpy(dtype=np.float32)
+vqe_data = master_df[[f"{a}_vqe" for a in asset_list]].to_numpy(dtype=np.float32)
+
 
 # Hyperparameters
 batch_size = 20
 n_episodes = 1000
 gamma = 0.9
-env_kwargs = {'num_assets': num_assets}
+
+# giving the environment the data
+env_kwargs = {
+    'num_assets': num_assets,
+    'mu_data': mu_data,
+    'var_data': var_data,
+    'vqe_data': vqe_data
+}
 
 optimizer_var = tf.keras.optimizers.Adam(learning_rate=0.01, amsgrad=True)
 optimizer_in = tf.keras.optimizers.Adam(learning_rate=0.1, amsgrad=True)
@@ -138,5 +157,6 @@ plt.plot(episode_reward_history)
 plt.xlabel('Batch')
 plt.ylabel('Average Reward')
 plt.title('Training Progress')
+plt.savefig("training_progress.png") # for graph
 plt.show()
 
