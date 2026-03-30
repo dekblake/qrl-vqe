@@ -3,6 +3,10 @@ import sympy
 import numpy as np
 import tensorflow as tf 
 import tensorflow_quantum as tfq
+import qsimcirq
+
+tf.config.threading.set_intra_op_parallelism_threads(4)
+tf.config.threading.set_inter_op_parallelism_threads(4)
 
 from variational_eigensolver import eigen_circuit
 
@@ -50,6 +54,7 @@ def portfolio_optimisation(mu_today, var_today, recent_returns_df, ansatz_circui
     theta = tf.Variable(np.random.uniform(0, 2*np.pi, len(param_strings)), dtype=tf.float32)
     optimiser = tf.keras.optimizers.Adam(learning_rate=0.1)
 
+    @tf.function
     for step in range(50):
         with tf.GradientTape() as tape:
 
