@@ -3,17 +3,18 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ["TF_USE_LEGACY_KERAS"] = "1"
 
 import multiprocessing
-import cirq
-import sympy 
-import numpy as np
 import tensorflow as tf 
-import tensorflow_quantum as tfq
 
 # Force TensorFlow to use all available Kaggle CPU cores
 cores = multiprocessing.cpu_count()
 tf.config.threading.set_inter_op_parallelism_threads(cores)
 tf.config.threading.set_intra_op_parallelism_threads(cores)
 print(f"Forcing TensorFlow to use all {cores} CPU cores!")
+
+import cirq
+import sympy 
+import numpy as np
+import tensorflow_quantum as tfq
 
 from variational_eigensolver import eigen_circuit
 
