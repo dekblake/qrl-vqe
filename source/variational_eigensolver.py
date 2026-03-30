@@ -30,7 +30,7 @@ def eigen_circuit(qubits, layer_count, seed):
     #pauli-two entanglement topology (pairwise-TwoLocal)
     circuit += [cirq.CZ(q0, q1) for q0,q1 in zip(qubits, qubits[1:])]
 
-  return circuit 
+  return circuit, list(params.flatten())
 
 """qubit_count, layer_count = 5, 3
 qubits = cirq.GridQubit.rect(1, qubit_count)

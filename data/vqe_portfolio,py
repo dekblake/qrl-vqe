@@ -1,1 +1,5 @@
 from source.variational_eigensolver import eigen_solver
+
+def vqe_inputs(m_today, var_today, recent_returns_df):
+
+    
