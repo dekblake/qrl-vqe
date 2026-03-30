@@ -5,16 +5,16 @@ import datetime as dt
 from statsmodels.tsa.arima.model import ARIMA
 import cirq
 
-# 1. IMPORT YOUR CUSTOM MATH & QUANTUM MODULES
 from arima_garch import mf2_garch_estimate
-from vqe_solver import eigen_circuit, run_vqe_portfolio_optimization
+from vqe_portfolio import portfolio_optimisation
+from variational_eigensolver import eigen_circuit
 
 
 def test_train(tickers, interval, start, end):
     data = yf.download(tickers, interval, start, end)['Close']
     data = data.ffill().dropna()
 
-    # Log returns (Perfect!)
+    # Log returns
     returns = np.log(data / data.shift(1)).dropna()
 
     split = int(len(returns)*.8)
@@ -33,16 +33,16 @@ if __name__ == "__main__":
     start = dt.datetime(2020, 1, 1)
     end = dt.datetime(2025, 1, 1)
 
-    # 2. DOWNLOAD DATA AND SPLIT
+    # test/train split
     print("Downloading Data...")
     train_set, test_set = test_train(assets, "1d", start, end)
 
-    # Combine them to give GARCH and ARIMA a continuous timeline for the warmup
+    
     full_data = pd.concat([train_set, test_set])
     variance_features = pd.DataFrame(index=full_data.index)
     m_window = 252
 
-    # 3. RUN ARIMA AND MF2-GARCH
+    # running ARIMA-GARCH
     for asset in assets:
         print(f"Estimating ARIMA and MF2-GARCH for {asset}...")
         y_array = full_data[asset].dropna().to_numpy()
@@ -62,13 +62,13 @@ if __name__ == "__main__":
     # Merge and drop the 252-day GARCH warmup period
     master_df = full_data.join(variance_features).dropna()
 
-    # 4. PREPARE THE VQE CIRCUIT
+    # vqe circuit
     print("Preparing VQE Circuit...")
     vqe_qubits = cirq.GridQubit.rect(1, 14)  # 14 qubits for 7 assets
     vqe_circuit, vqe_params = eigen_circuit(vqe_qubits, layer_count=3, seed=42)
     vqe_param_strings = [str(p) for p in vqe_params]
 
-    # 5. RUN THE VQE SOLVER
+    # solver
     print("Running Daily VQE Solver...")
     for asset in assets:
         master_df[f"{asset}_vqe"] = 0
@@ -77,22 +77,22 @@ if __name__ == "__main__":
         mu_today = [row[f"{asset}_mu"] for asset in assets]
         var_today = [row[f"{asset}_var"] for asset in assets]
 
-        # Solve for today's optimal portfolio!
-        optimal_tiers = run_vqe_portfolio_optimization(
+        # Solve for today's optimal portfolio
+        optimal_tiers = portfolio_optimisation(
             mu_today, var_today, vqe_circuit, vqe_param_strings
         )
 
         for i, asset in enumerate(assets):
             master_df.at[date, f"{asset}_vqe"] = optimal_tiers[i]
 
-    # 6. SPLIT BACK INTO TRAIN AND TEST SETS
+    # test/train split pt.2
     print("Splitting and Saving...")
     test_start_date = test_set.index[0]
 
     master_train = master_df[master_df.index < test_start_date]
     master_test = master_df[master_df.index >= test_start_date]
 
-    # Save to final CSVs
+    # Save to CSVs
     master_train.to_csv("data/master_train_env.csv")
     master_test.to_csv("data/master_test_env.csv")
 
