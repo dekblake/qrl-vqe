@@ -144,5 +144,3 @@ def predicted(y, h, tau, coeff, m):
     var_tomorrow = h_tomorrow * tau_tomorrow
 
     return var_tomorrow
-
-
