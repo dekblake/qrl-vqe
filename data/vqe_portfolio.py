@@ -1,20 +1,26 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ["TF_USE_LEGACY_KERAS"] = "1"
+
+import multiprocessing
 import cirq
 import sympy 
 import numpy as np
 import tensorflow as tf 
 import tensorflow_quantum as tfq
-import qsimcirq
 
-tf.config.threading.set_intra_op_parallelism_threads(4)
-tf.config.threading.set_inter_op_parallelism_threads(4)
+# Force TensorFlow to use all available Kaggle CPU cores
+cores = multiprocessing.cpu_count()
+tf.config.threading.set_inter_op_parallelism_threads(cores)
+tf.config.threading.set_intra_op_parallelism_threads(cores)
+print(f"Forcing TensorFlow to use all {cores} CPU cores!")
 
 from variational_eigensolver import eigen_circuit
 
 def portfolio_hamiltonian(qubits, mu_today, cov_matrix, risk_aversion=0.5):
-
+    # ... [Keep your exact hamiltonian logic here] ...
     hamiltonian = cirq.PauliSum()
     num_assets = len(mu_today)
-
     weights = []
 
     for i in range(num_assets): 
@@ -31,7 +37,6 @@ def portfolio_hamiltonian(qubits, mu_today, cov_matrix, risk_aversion=0.5):
 
     for i in range(num_assets): 
         for j in range(num_assets):
-
             hamiltonian += risk_aversion * cov_matrix[i, j] * weights[i] * weights[j]
     
     return hamiltonian
@@ -49,12 +54,15 @@ def portfolio_optimisation(mu_today, var_today, recent_returns_df, ansatz_circui
     hamiltonian = portfolio_hamiltonian(qubits, mu_today, cov_matrix)
 
     circuit_tensor = tfq.convert_to_tensor([ansatz_circuit])
-    expectation_layer = tfq.layers.Expectation(differentiator = tfq.differentiators.Adjoint())
+    expectation_layer = tfq.layers.Expectation(differentiator=tfq.differentiators.Adjoint())
 
     theta = tf.Variable(np.random.uniform(0, 2*np.pi, len(param_strings)), dtype=tf.float32)
-    optimiser = tf.keras.optimizers.Adam(learning_rate=0.1)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.1)
 
-    @tf.function
+    # ----------------------------------------------------
+    # NEW: Wrapping the optimization step in tf.function
+    # ----------------------------------------------------
+    @tf.function(reduce_retracing=True)
     def train_step():
         with tf.GradientTape() as tape:
             energy = expectation_layer(
@@ -69,15 +77,16 @@ def portfolio_optimisation(mu_today, var_today, recent_returns_df, ansatz_circui
         optimizer.apply_gradients(zip(grads, [theta]))
         return loss
 
-    # Run the compiled training step
+    # Execute the fast compiled graph
     for step in range(50):
         train_step()
+    # ----------------------------------------------------
     
     resolver = cirq.ParamResolver(dict(zip(param_strings, theta.numpy())))
     resolved_circuit = cirq.resolve_parameters(ansatz_circuit, resolver)
 
-    # NEW: Use qsimcirq to multithread the final state vector simulation
-    simulator = qsimcirq.QSimSimulator() 
+    # Standard Cirq simulator is perfectly fine here since it only runs ONCE
+    simulator = cirq.Simulator()
     result = simulator.simulate(resolved_circuit)
 
     state_probs = np.abs(result.state_vector())**2
@@ -92,7 +101,6 @@ def portfolio_optimisation(mu_today, var_today, recent_returns_df, ansatz_circui
         optimal_tiers.append(tier)
 
     return optimal_tiers
-
 
     
     
