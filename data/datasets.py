@@ -77,8 +77,9 @@ if __name__ == "__main__":
         mu_today = [row[f"{asset}_mu"] for asset in assets]
         var_today = [row[f"{asset}_var"] for asset in assets]
 
-        recent_returns_df = full_data.loc[:date].tail(60)
-        
+        # Pass the 'assets' list so we only grab the original 7 columns!
+        recent_returns_df = full_data[assets].loc[:date].tail(60)
+
         # Solve for today's optimal portfolio
         optimal_tiers = portfolio_optimisation(
             mu_today, var_today, recent_returns_df, vqe_circuit, vqe_param_strings)
