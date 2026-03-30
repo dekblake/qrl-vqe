@@ -9,10 +9,11 @@ import cirq
 from arima_garch import mf2_garch_estimate
 from vqe_solver import eigen_circuit, run_vqe_portfolio_optimization
 
+
 def test_train(tickers, interval, start, end):
     data = yf.download(tickers, interval, start, end)['Close']
     data = data.ffill().dropna()
-    
+
     # Log returns (Perfect!)
     returns = np.log(data / data.shift(1)).dropna()
 
@@ -31,12 +32,12 @@ if __name__ == "__main__":
 
     start = dt.datetime(2020, 1, 1)
     end = dt.datetime(2025, 1, 1)
-    
+
     # 2. DOWNLOAD DATA AND SPLIT
     print("Downloading Data...")
     train_set, test_set = test_train(assets, "1d", start, end)
 
-    # Combine them to give GARCH and ARIMA a continuous timeline for the warmup!
+    # Combine them to give GARCH and ARIMA a continuous timeline for the warmup
     full_data = pd.concat([train_set, test_set])
     variance_features = pd.DataFrame(index=full_data.index)
     m_window = 252
@@ -63,7 +64,7 @@ if __name__ == "__main__":
 
     # 4. PREPARE THE VQE CIRCUIT
     print("Preparing VQE Circuit...")
-    vqe_qubits = cirq.GridQubit.rect(1, 14) # 14 qubits for 7 assets
+    vqe_qubits = cirq.GridQubit.rect(1, 14)  # 14 qubits for 7 assets
     vqe_circuit, vqe_params = eigen_circuit(vqe_qubits, layer_count=3, seed=42)
     vqe_param_strings = [str(p) for p in vqe_params]
 
@@ -87,12 +88,13 @@ if __name__ == "__main__":
     # 6. SPLIT BACK INTO TRAIN AND TEST SETS
     print("Splitting and Saving...")
     test_start_date = test_set.index[0]
-    
+
     master_train = master_df[master_df.index < test_start_date]
     master_test = master_df[master_df.index >= test_start_date]
 
     # Save to final CSVs
     master_train.to_csv("data/master_train_env.csv")
     master_test.to_csv("data/master_test_env.csv")
-    
-    print(f"Done! Saved {len(master_train)} Train days and {len(master_test)} Test days.")
+
+    print(f"Done! Saved {len(master_train)} Train days and {
+          len(master_test)} Test days.")
