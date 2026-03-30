@@ -5,7 +5,6 @@ import numpy as np
 from math import pi
 from statsmodels.tsa.arima.model import ARIMA
 from scipy.optimize import minimize
-from source.variational_eigensolver import eigen_circuit
 
 # import csv and create dataframe
 
