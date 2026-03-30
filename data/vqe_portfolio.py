@@ -45,10 +45,10 @@ def portfolio_optimisation(mu_today, var_today, recent_returns_df, ansatz_circui
     hamiltonian = portfolio_hamiltonian(qubits, mu_today, cov_matrix)
 
     circuit_tensor = tfq.convert_to_tensor([ansatz_circuit])
-    expectation_layer = tfq.layers.Expectation(differentiator = tfq.differentiation.Adjoint())
+    expectation_layer = tfq.layers.Expectation(differentiator = tfq.differentiators.Adjoint())
 
     theta = tf.Variable(np.random.uniform(0, 2*np.pi, len(param_strings)), dtype=tf.float32)
-    opitimiser = tf.keras.opitimizera.Adam(learning_rate=0.1)
+    opitimiser = tf.keras.opitimizers.Adam(learning_rate=0.1)
 
     for step in range(50):
         with tf.GradientTape() as tape:
@@ -62,7 +62,7 @@ def portfolio_optimisation(mu_today, var_today, recent_returns_df, ansatz_circui
             loss = energy[0][0]
 
         grads = tape.gradient(loss,[theta])
-        optimizer.apply_gradients(zip(grads, [theta]))
+        optimiser.apply_gradients(zip(grads, [theta]))
     
     resolver = cirq.ParamResolver(dict(zip(param_strings, theta.numpy())))
     resolved_circuit = cirq.resolve_parameters(ansatz_circuit, resolver)
