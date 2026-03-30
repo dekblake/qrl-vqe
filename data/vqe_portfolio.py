@@ -48,7 +48,7 @@ def portfolio_optimisation(mu_today, var_today, recent_returns_df, ansatz_circui
     expectation_layer = tfq.layers.Expectation(differentiator = tfq.differentiators.Adjoint())
 
     theta = tf.Variable(np.random.uniform(0, 2*np.pi, len(param_strings)), dtype=tf.float32)
-    opitimiser = tf.keras.optimizers.Adam(learning_rate=0.1)
+    optimiser = tf.keras.optimizers.Adam(learning_rate=0.1)
 
     for step in range(50):
         with tf.GradientTape() as tape:
