@@ -23,7 +23,7 @@ def portfolio_hamiltonian(qubits, mu_today, cov_matrix, risk_aversion=0.5):
         w_i = 1.0 * x_1 + 2.0 * x_2
         weights.append(w_i)
 
-        hamiltonian -= mu_todaya[i] * w_i
+        hamiltonian -= mu_today[i] * w_i
 
     for i in range(num_assets): 
         for j in range(num_assets):
