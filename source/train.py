@@ -29,8 +29,8 @@ vqe_data = master_df[[f"{a}_vqe" for a in asset_list]].to_numpy(dtype=np.float32
 
 
 # Hyperparameters
-batch_size = 20
-n_episodes = 1000
+batch_size = 50
+n_episodes = 10000
 gamma = 0.9
 
 # giving the environment the data
