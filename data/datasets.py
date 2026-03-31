@@ -50,30 +50,53 @@ if __name__ == "__main__":
     print("Downloading Data...")
     train_set, test_set = test_train(assets, start, end)
 
-    
     full_data = pd.concat([train_set, test_set])
-    variance_features = pd.DataFrame(index=full_data.index)
     m_window = 252
 
-    # running ARIMA-GARCH
+    # -----------------------------------------------------------------
+    # NEW: Create empty columns for our honest predictions
+    # -----------------------------------------------------------------
     for asset in assets:
-        print(f"Estimating ARIMA and MF2-GARCH for {asset}...")
-        y_array = full_data[asset].dropna().to_numpy()
+        full_data[f"{asset}_mu"] = np.nan
+        full_data[f"{asset}_var"] = np.nan
 
-        # --- ARIMA ---
-        arima_model = ARIMA(y_array, order=(1, 0, 0)).fit()
-        full_data[f"{asset}_mu"] = arima_model.fittedvalues
+    # running expanding window ARIMA-GARCH to prevent look-ahead bias
+    for asset in assets:
+        print(f"Estimating rolling ARIMA and MF2-GARCH for {asset} (This will take a while)...")
+        
+        # Start from day 252 (we need 1 year of history to make the first prediction)
+        for i in range(m_window, len(full_data)):
+            
+            # ONLY grab past prices up to today (index 'i'). No future peeking!
+            history_window = full_data[asset].iloc[:i].to_numpy()
+            
+            # --- ARIMA ---
+            try:
+                # Fit on history, forecast exactly 1 step into the future
+                arima_model = ARIMA(history_window, order=(1, 0, 0)).fit()
+                mu_pred = arima_model.forecast(steps=1)[0]
+            except:
+                mu_pred = 0.0 # Safety net if math fails to converge
 
-        # --- MF2-GARCH ---
-        coeff, e, h, tau, V_m = mf2_garch_estimate(y_array, m=m_window)
+            # --- MF2-GARCH ---
+            try:
+                coeff, e, h, tau, V_m = mf2_garch_estimate(history_window, m=m_window)
+                var_pred = h[-1] * tau[-1]
+            except:
+                var_pred = 0.0001 # Safety net if math fails to converge
 
-        # Pad the historical features
-        pad_length = len(y_array) - len(h)
-        padding = [np.nan] * pad_length
-        variance_features[f"{asset}_var"] = padding + list(h * tau)
+            # Assign predictions to today's date
+            date_index = full_data.index[i]
+            full_data.loc[date_index, f"{asset}_mu"] = mu_pred
+            full_data.loc[date_index, f"{asset}_var"] = var_pred
 
-    # Merge and drop the 252-day GARCH warmup period
-    master_df = full_data.join(variance_features).dropna()
+            # Print an update every 100 days so we know it's working
+            if i % 100 == 0:
+                print(f"   ...processed {i}/{len(full_data)} days for {asset}")
+
+    # Drop the 252 warmup days where we couldn't make predictions
+    master_df = full_data.dropna()
+    # -----------------------------------------------------------------
 
     # vqe circuit
     print("Preparing VQE Circuit...")
