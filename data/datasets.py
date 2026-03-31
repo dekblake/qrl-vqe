@@ -1,6 +1,3 @@
-# ==========================================================
-# 1. KAGGLE TENSORFLOW SPEED HACKS (MUST BE AT VERY TOP)
-# ==========================================================
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ["TF_USE_LEGACY_KERAS"] = "1"
@@ -13,9 +10,7 @@ tf.config.threading.set_inter_op_parallelism_threads(cores)
 tf.config.threading.set_intra_op_parallelism_threads(cores)
 print(f"Forcing TensorFlow to use all {cores} CPU cores!")
 
-# ==========================================================
-# 2. NORMAL IMPORTS
-# ==========================================================
+
 import yfinance as yf
 import pandas as pd
 import numpy as np
