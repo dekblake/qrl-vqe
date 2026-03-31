@@ -60,38 +60,46 @@ if __name__ == "__main__":
         full_data[f"{asset}_mu"] = np.nan
         full_data[f"{asset}_var"] = np.nan
 
-    # running expanding window ARIMA-GARCH to prevent look-ahead bias
+    # weekly rolling window
     for asset in assets:
-        print(f"Estimating rolling ARIMA and MF2-GARCH for {asset} (This will take a while)...")
+        print(f"Estimating rolling ARIMA and MF2-GARCH for {asset} (Weekly Refit)...")
         
-        # Start from day 252 (we need 1 year of history to make the first prediction)
+        last_mu = 0.0
+        last_var = 0.0001
+        
+        # Start from day 252
         for i in range(m_window, len(full_data)):
             
-            # ONLY grab past prices up to today (index 'i'). No future peeking!
-            history_window = full_data[asset].iloc[:i].to_numpy()
-            
-            # --- ARIMA ---
-            try:
-                # Fit on history, forecast exactly 1 step into the future
-                arima_model = ARIMA(history_window, order=(1, 0, 0)).fit()
-                mu_pred = arima_model.forecast(steps=1)[0]
-            except:
-                mu_pred = 0.0 # Safety net if math fails to converge
+            # ONLY REFIT THE STATS MODELS ONCE A WEEK (Every 5 days)
+            if i % 5 == 0:
+                # 1. Fixed Rolling Window: Only grab the LAST 252 days up to today. 
+                # This keeps the math incredibly fast because the array never grows!
+                history_window = full_data[asset].iloc[i-m_window : i].to_numpy()
+                
+                # --- ARIMA ---
+                try:
+                    arima_model = ARIMA(history_window, order=(1, 0, 0)).fit()
+                    last_mu = arima_model.forecast(steps=1)[0]
+                except:
+                    pass # Keep the previous week's mu if it fails
 
-            # --- MF2-GARCH ---
-            try:
-                coeff, e, h, tau, V_m = mf2_garch_estimate(history_window, m=m_window)
-                var_pred = h[-1] * tau[-1]
-            except:
-                var_pred = 0.0001 # Safety net if math fails to converge
+                # --- MF2-GARCH ---
+                try:
+                    # Scale data x100 to help GARCH converge
+                    scaled_history = history_window * 100.0
+                    coeff, e, h, tau, V_m = mf2_garch_estimate(scaled_history, m=m_window)
+                    
+                    # Scale variance back down
+                    last_var = (h[-1] * tau[-1]) / 10000.0
+                except:
+                    pass # Keep the previous week's var if it fails
 
-            # Assign predictions to today's date
+            # Assign predictions to today's date (uses fresh math on Fridays, carries it through Thursday)
             date_index = full_data.index[i]
-            full_data.loc[date_index, f"{asset}_mu"] = mu_pred
-            full_data.loc[date_index, f"{asset}_var"] = var_pred
+            full_data.loc[date_index, f"{asset}_mu"] = last_mu
+            full_data.loc[date_index, f"{asset}_var"] = last_var
 
-            # Print an update every 100 days so we know it's working
-            if i % 100 == 0:
+            if i % 250 == 0:
                 print(f"   ...processed {i}/{len(full_data)} days for {asset}")
 
     # Drop the 252 warmup days where we couldn't make predictions
