@@ -1,3 +1,21 @@
+# ==========================================================
+# 1. KAGGLE TENSORFLOW SPEED HACKS (MUST BE AT VERY TOP)
+# ==========================================================
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ["TF_USE_LEGACY_KERAS"] = "1"
+
+import multiprocessing
+import tensorflow as tf
+
+cores = multiprocessing.cpu_count()
+tf.config.threading.set_inter_op_parallelism_threads(cores)
+tf.config.threading.set_intra_op_parallelism_threads(cores)
+print(f"Forcing TensorFlow to use all {cores} CPU cores!")
+
+# ==========================================================
+# 2. NORMAL IMPORTS
+# ==========================================================
 import yfinance as yf
 import pandas as pd
 import numpy as np
@@ -98,5 +116,4 @@ if __name__ == "__main__":
     master_train.to_csv("data/master_train_env.csv")
     master_test.to_csv("data/master_test_env.csv")
 
-    print(f"Done! Saved {len(master_train)} Train days and {
-          len(master_test)} Test days.")
+    print(f"Done! Saved {len(master_train)} Train days and {len(master_test)} Test days.")
